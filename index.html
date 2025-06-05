@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>zLocket Tool Pro</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00ff88;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00ff88;
+        }
+
+        input[type="text"],
+        input[type="url"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #00ffaa;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #00ff88;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #00ff88;
+            border: none;
+            border-radius: 8px;
+            color: #1a1a1a;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #00ffaa;
+            transform: translateY(-2px);
+        }
+
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #00ff88;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>zLocket Tool Pro</h1>
+        <form id="toolForm">
+            <div class="form-group">
+                <label for="link">Link:</label>
+                <input type="url" id="link" required placeholder="Nhập link...">
+            </div>
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" required placeholder="Nhập username...">
+            </div>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="addIcon" checked>
+                    <label for="addIcon">Add Icon</label>
+                </div>
+            </div>
+            <button type="submit">Chạy Tool</button>
+        </form>
+        <div id="output"></div>
+        <div class="loading" id="loading"></div>
+    </div>
+
+    <script>
+        document.getElementById('toolForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const link = document.getElementById('link').value;
+            const username = document.getElementById('username').value;
+            const addIcon = document.getElementById('addIcon').checked;
+            
+            const outputDiv = document.getElementById('output');
+            const loadingDiv = document.getElementById('loading');
+            
+            outputDiv.textContent = ''; // Clear previous output
+            loadingDiv.style.display = 'block'; // Show loading spinner
+            
+            try {
+                const response = await fetch('/run_tool', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        link,
+                        username,
+                        addIcon
+                    })
+                });
+                
+                const data = await response.json();
+                // Hiển thị trạng thái từ server
+                outputDiv.textContent = data.status || 'Unknown status from server.';
+
+            } catch (error) {
+                outputDiv.textContent = 'Error: ' + error.message;
+            } finally {
+                loadingDiv.style.display = 'none'; // Hide loading spinner
+            }
+        });
+    </script>
+</body>
+</html> 

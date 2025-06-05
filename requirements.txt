@@ -1,0 +1,6 @@
+requests
+tqdm
+colorama
+pystyle
+urllib3
+flask
