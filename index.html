@@ -4,118 +4,163 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>zLocket Tool Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-            color: #fff;
+        :root {
+            --primary-color: #4CAF50;
+            --primary-hover: #45a049;
+            --bg-gradient: linear-gradient(135deg, #1e1e2f, #2d2b42);
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+        }
+
+        * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            padding: 20px;
         }
 
         .container {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 30px;
-            border-radius: 15px;
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 20px;
             backdrop-filter: blur(10px);
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
             width: 100%;
-            max-width: 500px;
+            max-width: 550px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         h1 {
             text-align: center;
-            color: #00ff88;
-            margin-bottom: 30px;
-            font-size: 2em;
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+            font-size: 2.2em;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 1.5rem;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
-            color: #00ff88;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.95rem;
         }
 
         input[type="text"],
         input[type="url"] {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #00ff88;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            font-size: 16px;
+            padding: 0.8rem 1rem;
+            border: 2px solid rgba(76, 175, 80, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            font-size: 1rem;
             transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
         }
 
         input[type="text"]:focus,
         input[type="url"]:focus {
             outline: none;
-            border-color: #00ffaa;
-            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        input[type="text"]::placeholder,
+        input[type="url"]::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
         }
 
         .checkbox-group {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 0.8rem;
+            margin-top: 0.5rem;
         }
 
         input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: #00ff88;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
         }
 
         button {
             width: 100%;
-            padding: 15px;
-            background: #00ff88;
+            padding: 1rem;
+            background: var(--primary-color);
             border: none;
-            border-radius: 8px;
-            color: #1a1a1a;
-            font-size: 18px;
-            font-weight: bold;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 1rem;
         }
 
         button:hover {
-            background: #00ffaa;
+            background: var(--primary-hover);
             transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
         }
 
         #output {
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: 1.5rem;
+            padding: 1rem;
             background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
+            border-radius: 12px;
             max-height: 200px;
             overflow-y: auto;
-            font-family: monospace;
-            white-space: pre-wrap;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .loading {
             display: none;
             text-align: center;
-            margin-top: 20px;
+            margin-top: 1.5rem;
         }
 
         .loading::after {
             content: '';
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #00ff88;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--primary-color);
             border-radius: 50%;
             border-top-color: transparent;
             animation: spin 1s linear infinite;
@@ -124,11 +169,30 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Custom scrollbar */
+        #output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #output::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        #output::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        #output::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-hover);
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>zLocket Tool Pro</h1>
+        <h1>zLocket Tool Pro by YoungLTC</h1>
         <form id="toolForm">
             <div class="form-group">
                 <label for="link">Link:</label>
@@ -144,13 +208,22 @@
                     <label for="addIcon">Add Icon</label>
                 </div>
             </div>
-            <button type="submit">Chạy Tool</button>
+            <button type="submit" id="runToolBtn">Chạy Tool</button>
+            <button type="button" id="stopToolBtn">Dừng Tool</button>
         </form>
         <div id="output"></div>
         <div class="loading" id="loading"></div>
     </div>
 
     <script>
+        const runToolBtn = document.getElementById('runToolBtn');
+        const stopToolBtn = document.getElementById('stopToolBtn');
+        const outputDiv = document.getElementById('output');
+        const loadingDiv = document.getElementById('loading');
+
+        // Ban đầu, nút Stop Tool bị vô hiệu hóa
+        stopToolBtn.disabled = true;
+
         document.getElementById('toolForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -158,11 +231,10 @@
             const username = document.getElementById('username').value;
             const addIcon = document.getElementById('addIcon').checked;
             
-            const outputDiv = document.getElementById('output');
-            const loadingDiv = document.getElementById('loading');
-            
             outputDiv.textContent = ''; // Clear previous output
             loadingDiv.style.display = 'block'; // Show loading spinner
+            runToolBtn.disabled = true; // Disable Run button
+            stopToolBtn.disabled = true; // Disable Stop button temporarily
             
             try {
                 const response = await fetch('/run_tool', {
@@ -178,15 +250,50 @@
                 });
                 
                 const data = await response.json();
-                // Hiển thị trạng thái từ server
                 outputDiv.textContent = data.status || 'Unknown status from server.';
+
+                if (response.ok && data.status.includes('started')) {
+                    stopToolBtn.disabled = false; // Enable Stop button if tool started successfully
+                } else {
+                     runToolBtn.disabled = false; // Re-enable Run button if tool failed to start
+                }
 
             } catch (error) {
                 outputDiv.textContent = 'Error: ' + error.message;
+                runToolBtn.disabled = false; // Re-enable Run button on error
             } finally {
                 loadingDiv.style.display = 'none'; // Hide loading spinner
             }
         });
+
+        stopToolBtn.addEventListener('click', async () => {
+             outputDiv.textContent = ''; // Clear previous output
+             loadingDiv.style.display = 'block'; // Show loading spinner
+             stopToolBtn.disabled = true; // Disable Stop button
+             runToolBtn.disabled = true; // Disable Run button temporarily
+
+             try {
+                 const response = await fetch('/stop_tool', {
+                     method: 'POST',
+                 });
+
+                 const data = await response.json();
+                 outputDiv.textContent = data.status || 'Unknown status from server.';
+
+                  if (response.ok && data.status.includes('stopped')) {
+                      runToolBtn.disabled = false; // Enable Run button if tool stopped successfully
+                  } else {
+                       stopToolBtn.disabled = false; // Re-enable Stop button if failed to stop
+                  }
+
+             } catch (error) {
+                 outputDiv.textContent = 'Error: ' + error.message;
+                  stopToolBtn.disabled = false; // Re-enable Stop button on error
+             } finally {
+                 loadingDiv.style.display = 'none'; // Hide loading spinner
+             }
+        });
+
     </script>
 </body>
 </html> 

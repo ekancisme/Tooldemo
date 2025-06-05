@@ -5,9 +5,13 @@ import subprocess
 import threading
 import queue
 import io
-import tempfile # Import tempfile
+import tempfile
+import signal # Import signal module
 
 app = Flask(__name__)
+
+# Dictionary để theo dõi các tiến trình đang chạy (sử dụng cho đơn giản, có thể cần phức tạp hơn cho nhiều người dùng)
+running_processes = {}
 
 # Tạo một queue để lưu output (không dùng trực tiếp cho web nữa, chỉ để log)
 output_queue = queue.Queue()
@@ -26,18 +30,22 @@ def run_tool_subprocess(link, username, add_icon):
         my_env['PYTHONIOENCODING'] = 'utf-8'
 
         # Chạy script Python như một subprocess
-        # Chuyển hướng stdout và stderr đến các file tạm thời
-        # Truyền biến môi trường đã sửa đổi
         process = subprocess.Popen(
             [sys.executable, 'zLocket_Tool.py'],
             stdin=subprocess.PIPE,
             stdout=stdout_file,
             stderr=stderr_file,
-            text=True, # Sử dụng text mode cho input/output (string)
-            encoding='utf-8', # Quan trọng: Sử dụng UTF-8 cho stdin
+            text=True,
+            encoding='utf-8',
             cwd=os.path.dirname(os.path.abspath(__file__)),
-            env=my_env # Truyền biến môi trường
+            env=my_env,
+            # setpgrp=True # Sử dụng setpgrp=True trên Unix để tạo process group mới
+            # Trên Windows, không có setpgrp, cần dùng cách khác để kill process tree nếu cần
         )
+
+        # Lưu trữ tiến trình đang chạy
+        running_processes['zlocket_tool'] = process
+        print(f"Tool subprocess started with PID: {process.pid}")
 
         # Gửi các input theo thứ tự tool yêu cầu:
         # 1. Link hoặc Username Locket
@@ -47,16 +55,19 @@ def run_tool_subprocess(link, username, add_icon):
         process.stdin.write(f"{link}\n")
         process.stdin.write(f"{username}\n")
         process.stdin.write(f"{'Y' if add_icon else 'N'}\n")
-        process.stdin.write(f"y\n") # Thêm input xác nhận chạy tool
+        process.stdin.write(f"y\n")
         process.stdin.flush()
-        process.stdin.close() # Đóng stdin sau khi gửi hết input
+        process.stdin.close()
 
-        # Đợi subprocess kết thúc (tool này chạy không dừng, nên có thể không kết thúc trừ khi lỗi)
-        # process.wait()
-        # Có thể tool sẽ chạy mãi, nên chúng ta sẽ không đợi ở đây. Output sẽ ghi vào file tạm thời.
-        # Bạn sẽ cần dừng server hoặc process thủ công để dừng tool.
+        # Đợi subprocess kết thúc (tool này chạy không dừng)
+        # Nếu tool kết thúc (ví dụ do lỗi), chúng ta cần xóa nó khỏi running_processes
+        # Tuy nhiên, vì tool chạy không dừng, chúng ta có thể bỏ qua process.wait() ở đây
+        # và xử lý việc xóa khỏi dictionary khi lệnh dừng được gọi hoặc khi server tắt.
 
-        # Đọc nội dung từ các file tạm thời (có thể chỉ đọc một phần nếu tool chạy lâu)
+        # Đọc nội dung từ các file tạm thời (tool có thể vẫn đang ghi vào, đọc một phần)
+        # Có thể cần một cơ chế đọc file theo thời gian thực nếu muốn hiển thị output trên web
+        # Hiện tại chỉ đọc sau khi gửi input và trước khi hàm kết thúc.
+        # Để xem output khi tool đang chạy, xem console của server.
         stdout_file.seek(0) # Quay về đầu file
         stdout_output = stdout_file.read()
 
@@ -64,25 +75,53 @@ def run_tool_subprocess(link, username, add_icon):
         stderr_output = stderr_file.read()
 
         # Log output và error ra console của server
-        print("--- Tool Stdout ---")
+        print("--- Tool Stdout (after initial inputs) ---")
         print(stdout_output)
-        print("--- Tool Stderr ---")
+        print("--- Tool Stderr (after initial inputs) ---")
         print(stderr_output)
-        print("-------------------")
+        print("------------------------------------------")
 
     except Exception as e:
         print(f"Error running tool subprocess: {e}")
+        # Nếu có lỗi khi khởi chạy, xóa khỏi running_processes
+        if 'zlocket_tool' in running_processes:
+            del running_processes['zlocket_tool']
     finally:
-        # Đóng và dọn dẹp các file tạm thời (thực hiện sau khi process kết thúc hoặc bị dừng)
-        # Trong trường hợp tool chạy không dừng, các file này có thể không bị xóa tự động.
-        # Bạn có thể cần xóa thủ công sau khi dừng server/tool.
+        # Đóng file handle, nhưng không xóa file ở đây vì tool có thể vẫn đang ghi
+        # Xóa file sẽ được xử lý khi server tắt hoặc process kết thúc (nếu có).
         stdout_file.close()
         stderr_file.close()
-        # Các dòng xóa file tạm thời có thể gây lỗi nếu file vẫn đang được ghi bởi subprocess
-        # if os.path.exists(stdout_filename):
-        #     os.remove(stdout_filename)
-        # if os.path.exists(stderr_filename):
-        #     os.remove(stderr_filename)
+
+# Route để dừng tool
+@app.route('/stop_tool', methods=['POST'])
+def stop_tool_endpoint():
+    global running_processes
+    if 'zlocket_tool' in running_processes:
+        process = running_processes['zlocket_tool']
+        try:
+            # Thử terminate trước (SIGTERM)
+            process.terminate()
+            # Hoặc kill (SIGKILL) nếu terminate không hoạt động
+            # process.kill()
+            print(f"Attempted to stop tool subprocess with PID: {process.pid}")
+
+            # Đợi một chút để process kết thúc
+            # process.wait(timeout=5) # Có thể đợi có timeout
+
+            del running_processes['zlocket_tool']
+            # Xóa file tạm thời sau khi process dừng
+            # Cần tìm cách lấy lại tên file hoặc lưu trữ nó cùng process
+            # Hiện tại, file tạm thời có thể cần xóa thủ công nếu process không kết thúc sạch sẽ.
+
+            return jsonify({'status': f'Tool with PID {process.pid} stopped.'})
+        except ProcessLookupError:
+            # Process có thể đã kết thúc rồi
+            del running_processes['zlocket_tool']
+            return jsonify({'status': 'Tool process not found (already stopped?)'}), 404
+        except Exception as e:
+            return jsonify({'status': f'Error stopping tool: {e}'}), 500
+    else:
+        return jsonify({'status': 'No tool process is currently running.'}), 404
 
 @app.route('/')
 def index():
@@ -90,6 +129,11 @@ def index():
 
 @app.route('/run_tool', methods=['POST'])
 def run_tool_endpoint():
+    global running_processes
+    # Kiểm tra nếu đã có tool đang chạy
+    if 'zlocket_tool' in running_processes and running_processes['zlocket_tool'].poll() is None:
+         return jsonify({'status': 'Error: A tool process is already running.'}), 409
+
     data = request.json
     link = data.get('link')
     username = data.get('username')
@@ -98,7 +142,7 @@ def run_tool_endpoint():
     if not link or not username:
         return jsonify({'status': 'Error: Missing link or username.'}), 400
 
-    # Chạy tool trong thread riêng để không chặn server
+    # Chạy tool trong thread riêng
     thread = threading.Thread(target=run_tool_subprocess, args=(link, username, add_icon))
     thread.start()
 
@@ -109,5 +153,24 @@ if __name__ == '__main__':
     if not os.path.exists('index.html'):
         print("Error: index.html not found!")
         sys.exit(1)
+
+    # Thêm xử lý khi server tắt để cố gắng dừng tool và dọn dẹp file tạm thời
+    import atexit
+    def cleanup():
+        global running_processes
+        print("Server shutting down. Attempting to stop tool process...")
+        if 'zlocket_tool' in running_processes and running_processes['zlocket_tool'].poll() is None:
+            process = running_processes['zlocket_tool']
+            try:
+                process.terminate()
+                # process.kill()
+                print(f"Attempted to terminate process {process.pid}")
+                # Đợi một chút để tool kết thúc sau khi nhận tín hiệu
+                process.wait(timeout=5)
+            except Exception as e:
+                print(f"Error during cleanup: {e}")
+        # Có thể thêm logic tìm và xóa file tạm thời ở đây nếu cần
+
+    atexit.register(cleanup)
 
     app.run(debug=True, port=5000) 
