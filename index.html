@@ -220,9 +220,27 @@
         const stopToolBtn = document.getElementById('stopToolBtn');
         const outputDiv = document.getElementById('output');
         const loadingDiv = document.getElementById('loading');
+        let timeoutTimer = null;
 
-        // Ban đầu, nút Stop Tool bị vô hiệu hóa
+        // Initially disable Stop Tool button
         stopToolBtn.disabled = true;
+
+        function startTimeoutCountdown() {
+            let timeLeft = 60;
+            const updateCountdown = () => {
+                if (timeLeft > 0) {
+                    outputDiv.textContent = `Tool is running... Will auto-stop in ${timeLeft} seconds`;
+                    timeLeft--;
+                    timeoutTimer = setTimeout(updateCountdown, 1000);
+                } else {
+                    outputDiv.textContent = 'Tool has been automatically stopped after 1 minute.';
+                    runToolBtn.disabled = false;
+                    stopToolBtn.disabled = true;
+                    delete stopToolBtn.dataset.pid;
+                }
+            };
+            updateCountdown();
+        }
 
         document.getElementById('toolForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -252,10 +270,17 @@
                 const data = await response.json();
                 outputDiv.textContent = data.status || 'Unknown status from server.';
 
-                if (response.ok && data.status.includes('started')) {
-                    stopToolBtn.disabled = false; // Enable Stop button if tool started successfully
+                if (response.ok) {
+                    // Enable Stop button if tool started successfully
+                    stopToolBtn.disabled = false;
+                    // Store the PID in a data attribute
+                    if (data.pid) {
+                        stopToolBtn.dataset.pid = data.pid;
+                        // Start the countdown timer
+                        startTimeoutCountdown();
+                    }
                 } else {
-                     runToolBtn.disabled = false; // Re-enable Run button if tool failed to start
+                    runToolBtn.disabled = false; // Re-enable Run button if tool failed to start
                 }
 
             } catch (error) {
@@ -267,33 +292,49 @@
         });
 
         stopToolBtn.addEventListener('click', async () => {
-             outputDiv.textContent = ''; // Clear previous output
-             loadingDiv.style.display = 'block'; // Show loading spinner
-             stopToolBtn.disabled = true; // Disable Stop button
-             runToolBtn.disabled = true; // Disable Run button temporarily
+            const pid = stopToolBtn.dataset.pid;
+            if (!pid) {
+                outputDiv.textContent = 'Error: No process ID found';
+                return;
+            }
 
-             try {
-                 const response = await fetch('/stop_tool', {
-                     method: 'POST',
-                 });
+            outputDiv.textContent = ''; // Clear previous output
+            loadingDiv.style.display = 'block'; // Show loading spinner
+            stopToolBtn.disabled = true; // Disable Stop button
+            runToolBtn.disabled = true; // Disable Run button temporarily
 
-                 const data = await response.json();
-                 outputDiv.textContent = data.status || 'Unknown status from server.';
+            // Clear the timeout timer if it exists
+            if (timeoutTimer) {
+                clearTimeout(timeoutTimer);
+                timeoutTimer = null;
+            }
 
-                  if (response.ok && data.status.includes('stopped')) {
-                      runToolBtn.disabled = false; // Enable Run button if tool stopped successfully
-                  } else {
-                       stopToolBtn.disabled = false; // Re-enable Stop button if failed to stop
-                  }
+            try {
+                const response = await fetch('/stop_tool', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ pid })
+                });
 
-             } catch (error) {
-                 outputDiv.textContent = 'Error: ' + error.message;
-                  stopToolBtn.disabled = false; // Re-enable Stop button on error
-             } finally {
-                 loadingDiv.style.display = 'none'; // Hide loading spinner
-             }
+                const data = await response.json();
+                outputDiv.textContent = data.status || 'Unknown status from server.';
+
+                if (response.ok && data.status.includes('stopped')) {
+                    runToolBtn.disabled = false; // Enable Run button if tool stopped successfully
+                    delete stopToolBtn.dataset.pid; // Clear the PID
+                } else {
+                    stopToolBtn.disabled = false; // Re-enable Stop button if failed to stop
+                }
+
+            } catch (error) {
+                outputDiv.textContent = 'Error: ' + error.message;
+                stopToolBtn.disabled = false; // Re-enable Stop button on error
+            } finally {
+                loadingDiv.style.display = 'none'; // Hide loading spinner
+            }
         });
-
     </script>
 </body>
 </html> 

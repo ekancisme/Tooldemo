@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>zLocket Tool Pro - Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --primary-hover: #45a049;
+            --danger-color: #f44336;
+            --danger-hover: #da190b;
+            --bg-gradient: linear-gradient(135deg, #1e1e2f, #2d2b42);
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+            font-size: 2.2em;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .processes-table {
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .processes-table th,
+        .processes-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .processes-table th {
+            background: rgba(0, 0, 0, 0.2);
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .processes-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .stop-btn {
+            padding: 0.5rem 1rem;
+            background: var(--danger-color);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .stop-btn:hover {
+            background: var(--danger-hover);
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--primary-color);
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-processes {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>zLocket Tool Pro - Admin Panel</h1>
+        <div class="processes-table">
+            <table style="width: 100%">
+                <thead>
+                    <tr>
+                        <th>PID</th>
+                        <th>Username</th>
+                        <th>Link</th>
+                        <th>Start Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="processesList">
+                    <!-- Processes will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        <div class="loading" id="loading"></div>
+    </div>
+
+    <script>
+        const processesList = document.getElementById('processesList');
+        const loadingDiv = document.getElementById('loading');
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString();
+        }
+
+        function updateProcessesList() {
+            loadingDiv.style.display = 'block';
+            fetch('/admin/processes')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.processes.length === 0) {
+                        processesList.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="no-processes">
+                                    No processes currently running
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        processesList.innerHTML = data.processes.map(process => `
+                            <tr>
+                                <td>${process.pid}</td>
+                                <td>${process.username}</td>
+                                <td>${process.link}</td>
+                                <td>${formatDate(process.start_time)}</td>
+                                <td>
+                                    <button class="stop-btn" onclick="stopProcess(${process.pid})">
+                                        Stop
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching processes:', error);
+                    processesList.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="no-processes">
+                                Error loading processes
+                            </td>
+                        </tr>
+                    `;
+                })
+                .finally(() => {
+                    loadingDiv.style.display = 'none';
+                });
+        }
+
+        function stopProcess(pid) {
+            loadingDiv.style.display = 'block';
+            fetch('/admin/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ pid })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status.includes('stopped')) {
+                    updateProcessesList();
+                } else {
+                    alert('Error stopping process: ' + data.status);
+                }
+            })
+            .catch(error => {
+                console.error('Error stopping process:', error);
+                alert('Error stopping process');
+            })
+            .finally(() => {
+                loadingDiv.style.display = 'none';
+            });
+        }
+
+        // Update processes list every 5 seconds
+        updateProcessesList();
+        setInterval(updateProcessesList, 5000);
+    </script>
+</body>
+</html> 
